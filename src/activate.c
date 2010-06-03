@@ -225,19 +225,22 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record) {
 
 	plist_t ticket_dict = NULL;
 	plist_from_xml(ticket, ticket_size, &ticket_dict);
-	if(ticket_dict == NULL) {
+	if (ticket_dict == NULL) {
 		printf("Unable to convert activation ticket into plist\n");
 		return -1;
 	}
 
 	plist_t iphone_activation_node = plist_dict_get_item(ticket_dict, "iphone-activation");
-	if(!iphone_activation_node) {
-		printf("Unable to find iphone activation node\n");
-		return -1;
+	if (!iphone_activation_node) {
+		iphone_activation_node = plist_dict_get_item(ticket_dict, "device-activation");
+		if (!iphone_activation_node) {
+			printf("Unable to find device activation node\n");
+			return -1;
+		}
 	}
 
 	plist_t activation_record = plist_dict_get_item(iphone_activation_node, "activation-record");
-	if(!activation_record) {
+	if (!activation_record) {
 		printf("Unable to find activation record node");
 		return -1;
 	}
