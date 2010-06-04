@@ -39,7 +39,7 @@ size_t activate_write_callback(char* data, size_t size, size_t nmemb, activate_r
 		response->content[response->length + total] = '\0';
 		response->length += total;
 	}
-	printf("%s", data);
+	//printf("%s", data);
 	return total;
 }
 
@@ -118,7 +118,7 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record) {
 	char* activation_info_data = NULL;
 	plist_to_xml(activation_info_node, &activation_info_data, &activation_info_size);
 	plist_free(activation_info_node);
-	printf("%s\n\n", activation_info_data);
+	//printf("%s\n\n", activation_info_data);
 
 	char* activation_info_start = strstr(activation_info_data, "<dict>");
 	if (activation_info_start == NULL) {
@@ -221,7 +221,7 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record) {
 	memcpy(ticket, ticket_start, ticket_size);
 	//free(ticket_data);
 
-	printf("%s\n\n", ticket);
+	//printf("%s\n\n", ticket);
 
 	plist_t ticket_dict = NULL;
 	plist_from_xml(ticket, ticket_size, &ticket_dict);
