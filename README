@@ -1,5 +1,7 @@
 ideviceactivate is a small utility to activate iDevices from the comfort of your GNU/Linux box.
 
+Users not comfortable with using a shell should wait for iDeviceActivator, which provides an easier way to do all this.
+
 ===Credits===
 
 Almost all of the code, with the major exception of the caching code, was written by p0sixninja.
@@ -18,3 +20,16 @@ Then:
 ===Running===
 
 For straight-up activation with nothing fancy: ideviceactivate
+For the same, but deactivating: ideviceactivate -x
+
+Now, to run with the caching stuff:
+
+	Create the cache and activate the device:
+	ideviceactivate -c <cache directory>
+
+	Use an already created cache to activate the device:
+	ideviceactivate -r <cache directory>
+
+Notes:
+	The -u flag can be used to target a device by its UUID.
+	If you have an activation record lying around, you can specify it along with the -f flag.
