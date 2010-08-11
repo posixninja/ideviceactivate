@@ -44,9 +44,15 @@ static void usage(int argc, char** argv) {
 	printf("  -d\t\tenable communication debugging\n");
 	printf("  -h\t\tprints usage information\n");
 	printf("  -u UUID\ttarget specific device by its 40-digit device UUID\n");
+	printf("  -e IMEI\tprovide the IMEI to use when sending the activation request\n");
+	printf("  -s IMSI\tprovide the IMSI to use when sending the activation request\n");
+	printf("  -i ICCID\tprovide the ICCID to use when sending the activation request\n");
+	printf("  -n SERIALNUMBER\tprovide the serial number to use when sending the activation request\n");
 	printf("  -f FILE\tactivates device with local activation record\n");
 	printf("  -c DIR\tcaches activation data, enabling you to reactivate later\n");
 	printf("  -r DIR\tuses the specfied cache to activate the device\n");
+	printf("\n");
+	printf("Note: There is no point in the -e -s and -i flags for iPods!\n");
 	printf("\n");
 	printf("\n");
 }
@@ -57,13 +63,19 @@ int main(int argc, char* argv[]) {
 	int debug = 0;
 	char* uuid = NULL;
 	char* file = NULL;
+
+	char* cust_imei=NULL;
+	char* cust_imsi=NULL;
+	char* cust_iccid=NULL;
+	char* cust_serial_num=NULL;
+
 	int deactivate = 0;
 	idevice_t device = NULL;
 	lockdownd_client_t client = NULL;
 	idevice_error_t device_error = IDEVICE_E_UNKNOWN_ERROR;
 	lockdownd_error_t client_error = LOCKDOWN_E_UNKNOWN_ERROR;
 
-	while ((opt = getopt(argc, argv, "dhxu:f:c:r:")) > 0) {
+	while ((opt = getopt(argc, argv, "dhxu:f:c:r:e:s:i:n:")) > 0) {
 		switch (opt) {
 		case 'h':
 			usage(argc, argv);
@@ -94,6 +106,22 @@ int main(int argc, char* argv[]) {
 		case 'r':
 			cachedir = optarg;
 			use_cache=1;
+			break;
+
+		case 'e':
+			cust_imei=optarg;
+			break;
+
+		case 's':
+			cust_imsi=optarg;
+			break;
+
+		case 'i':
+			cust_iccid=optarg;
+			break;
+
+		case 'n':
+			cust_serial_num=optarg;
 			break;
 
 		default:
@@ -143,7 +171,7 @@ int main(int argc, char* argv[]) {
 
 		} else {
 			printf("Creating activation request\n");
-			if(activate_fetch_record(client, &activation_record) < 0) {
+			if(activate_fetch_record(client, &activation_record, cust_imei, cust_imsi, cust_iccid, cust_serial_num) < 0) {
 				fprintf(stderr, "Unable to fetch activation request\n");
 				lockdownd_client_free(client);
 				idevice_free(device);

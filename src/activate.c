@@ -63,7 +63,7 @@ void deactivate_device(lockdownd_client_t client)
 	}
 }
 
-int activate_fetch_record(lockdownd_client_t client, plist_t* record) {
+int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust_imei, char* cust_imsi, char* cust_iccid, char* cust_serial_num) {
 	int size = 0;
 	char* request = NULL;
 	struct curl_httppost* post = NULL;
@@ -82,26 +82,74 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record) {
 	if (!strcmp(device_class, "iPhone")) {
 		if (use_cache!=1)
 		{
-			info->iccid=(char*)lockdownd_get_string_value(client, "IntegratedCircuitCardIdentity");
+			if (cust_iccid==NULL)
+			{
+				info->iccid=(char*)lockdownd_get_string_value(client, "IntegratedCircuitCardIdentity");
+			}
+			else {
+				printf("INFO: ICCID specified on the command line...\n");
+				info->iccid=cust_iccid;
+			}
 
-			info->imei=(char*)lockdownd_get_string_value(client, "InternationalMobileEquipmentIdentity");
+			if (cust_imei==NULL)
+			{
+				info->imei=(char*)lockdownd_get_string_value(client, "InternationalMobileEquipmentIdentity");
+			}
+			else {
+				printf("INFO: IMEI specified on the command line...\n");
+				info->imei=cust_imei;
+			}
 
-			info->imsi=(char*)lockdownd_get_string_value(client, "InternationalMobileSubscriberIdentity");
+			if (cust_imsi==NULL)
+			{
+				info->imsi=(char*)lockdownd_get_string_value(client, "InternationalMobileSubscriberIdentity");
+			}
+			else {
+				printf("INFO: IMSI specified on the command line...\n");
+				info->imsi=cust_imsi;
+			}
 		}
 
 		else {
-			info->iccid=get_from_cache("ICCID");
-			info->imei=get_from_cache("IMEI");
-			info->imsi=get_from_cache("IMSI");
+			if (cust_iccid==NULL)
+			{
+				info->iccid=get_from_cache("ICCID");
+			}
+			else {
+				info->iccid=cust_iccid;
+			}
+
+			if (cust_imei==NULL)
+			{
+				info->imei=get_from_cache("IMEI");
+			}
+			else {
+				info->imei=cust_imei;
+			}
+
+			if (cust_imsi==NULL)
+			{
+				info->imsi=get_from_cache("IMSI");
+			}
+			else {
+				info->imsi=cust_imsi;
+			}
 		}
 	}
 
-	if (use_cache!=1)
+	if (cust_serial_num==NULL)
 	{
-		info->serial_number=(char*)lockdownd_get_string_value(client, "SerialNumber");
+		if (use_cache!=1)
+		{
+			info->serial_number=(char*)lockdownd_get_string_value(client, "SerialNumber");
+		}
+		else {
+			info->serial_number=get_from_cache("SerialNumber");
+		}
 	}
 	else {
-		info->serial_number=get_from_cache("SerialNumber");
+		printf("INFO: Serial number specified on the commad line...\n");
+		info->serial_number=cust_serial_num;
 	}
 
 	lockdownd_get_value(client, NULL, "ActivationInfo", &activation_info_node);

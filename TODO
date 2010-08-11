@@ -1,6 +1,11 @@
 TODO List
 ------------------------------------------------
 
-1) For ideviceactivate it needs a lot of cleaned
-2) Some options to be able to pass IMEI/IMSI/ICCID/SerialNumber on the command line
-3) Need to fix iPod activate to exit connect to itunes screen
+Unclaimed, feel free to work on these!
+(none)
+
+Work started, but still a long way to go...
+1) For ideviceactivate it needs a lot of cleaning
+
+I can't reproduce these issues, unless someone else can let's axe them...
+2) Need to fix iPod activate to exit connect to itunes screen
