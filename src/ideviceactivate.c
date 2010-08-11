@@ -1,6 +1,6 @@
 /*
  * ideviceactivate.c
- * A simple utility to handle the activation process for iPhones
+ * A simple utility to handle the activation process for iPhones.
  *
  * Copyright (c) 2010 Joshua Hill. All Rights Reserved.
  *
@@ -28,62 +28,12 @@
 #include <libimobiledevice/libimobiledevice.h>
 
 #include "activate.h"
+#include "cache.h"
+#include "util.h"
 
-static int buffer_read_from_filename(const char *filename, char **buffer, uint32_t *length) {
-	FILE *f;
-	uint64_t size;
-
-	f = fopen(filename, "rb");
-	if(f == NULL) {
-		printf("Unable to open file %s\n", filename);
-		return -1;
-	}
-
-	fseek(f, 0, SEEK_END);
-	size = ftell(f);
-	rewind(f);
-
-	*buffer = (char*) malloc(sizeof(char) * size);
-	if (fread(*buffer, sizeof(char), size, f) != size) {
-		printf("Unable to read %llu bytes from '%s'.\n", size, filename);
-		free(*buffer);
-		*buffer = NULL;
-	}
-	fclose(f);
-
-	*length = size;
-	return 0;
-}
-
-static int plist_read_from_filename(plist_t *plist, const char *filename) {
-	char *buffer = NULL;
-	uint32_t length;
-
-	if (filename == NULL) {
-		printf("No filename specified\n");
-		return -1;
-	}
-
-	if(buffer_read_from_filename(filename, &buffer, &length) < 0) {
-		printf("Unable to read file\n");
-		return -1;
-	}
-
-	if (buffer ==  NULL) {
-		printf("Buffer returned null\n");
-		return -1;
-	}
-
-	if (memcmp(buffer, "bplist00", 8) == 0) {
-		plist_from_bin(buffer, length, plist);
-	} else {
-		plist_from_xml(buffer, length, plist);
-	}
-
-	free(buffer);
-
-	return 0;
-}
+char* cachedir = NULL;
+int use_cache=0;
+int backup_to_cache=0;
 
 static void usage(int argc, char** argv) {
 	char* name = strrchr(argv[0], '/');
@@ -95,6 +45,8 @@ static void usage(int argc, char** argv) {
 	printf("  -h\t\tprints usage information\n");
 	printf("  -u UUID\ttarget specific device by its 40-digit device UUID\n");
 	printf("  -f FILE\tactivates device with local activation record\n");
+	printf("  -c DIR\tcaches activation data, enabling you to reactivate later\n");
+	printf("  -r DIR\tuses the specfied cache to activate the device\n");
 	printf("\n");
 	printf("\n");
 }
@@ -111,7 +63,7 @@ int main(int argc, char* argv[]) {
 	idevice_error_t device_error = IDEVICE_E_UNKNOWN_ERROR;
 	lockdownd_error_t client_error = LOCKDOWN_E_UNKNOWN_ERROR;
 
-	while ((opt = getopt(argc, argv, "dhxu:f:")) > 0) {
+	while ((opt = getopt(argc, argv, "dhxu:f:c:r:")) > 0) {
 		switch (opt) {
 		case 'h':
 			usage(argc, argv);
@@ -131,6 +83,17 @@ int main(int argc, char* argv[]) {
 
 		case 'f':
 			file = optarg;
+			break;
+
+		case 'c':
+			cachedir = optarg;
+			backup_to_cache=1;
+			cache_warning();
+			break;
+
+		case 'r':
+			cachedir = optarg;
+			use_cache=1;
 			break;
 
 		default:
@@ -155,16 +118,19 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 
+	if (use_cache==1)
+	{
+		if (check_cache(client)!=0)
+		{
+			printf("The selected cache does not match this device :(");
+			idevice_free(device);
+			return -1;
+		}
+	}
+
 	plist_t activation_record = NULL;
 	if (deactivate) {
-		printf("Deactivating device... ");
-		client_error = lockdownd_deactivate(client);
-		if (client_error == LOCKDOWN_E_SUCCESS) {
-			printf("SUCCESS\n");
-		} else {
-			fprintf(stderr, "ERROR\nUnable to deactivate device: %d\n", client_error);
-		}
-
+		deactivate_device(client);
 	} else {
 		if (file != NULL) {
 			printf("Reading activation record from %s\n", file);
@@ -185,7 +151,12 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-		printf("Activating device... ");
+		printf("Activating device...\n");
+		uint32_t len=0;
+		char **xml=NULL;
+
+		plist_to_xml(activation_record, &xml, &len);
+		printf("ACTIVATION RECORD:\n\n%s\n\n", xml);
 		client_error = lockdownd_activate(client, activation_record);
 		if (client_error == LOCKDOWN_E_SUCCESS) {
 			printf("SUCCESS\n");

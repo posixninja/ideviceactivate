@@ -25,11 +25,20 @@
 #include <curl/curl.h>
 #include <plist/plist.h>
 #include <libimobiledevice/lockdown.h>
+#include "cache.h"
 
 typedef struct {
 	int length;
 	char* content;
 } activate_response;
+
+typedef struct {
+	char* imei;
+	char* imsi;
+	char* iccid;
+	char* serial_number;
+	char* activation_info;
+} activate_info;
 
 size_t activate_write_callback(char* data, size_t size, size_t nmemb, activate_response* response) {
 	size_t total = size * nmemb;
@@ -43,6 +52,17 @@ size_t activate_write_callback(char* data, size_t size, size_t nmemb, activate_r
 	return total;
 }
 
+void deactivate_device(lockdownd_client_t client)
+{
+	printf("Deactivating device... ");
+	int client_error = lockdownd_deactivate(client);
+	if (client_error == LOCKDOWN_E_SUCCESS) {
+		printf("SUCCESS\n");
+	} else {
+		fprintf(stderr, "ERROR\nUnable to deactivate device: %d\n", client_error);
+	}
+}
+
 int activate_fetch_record(lockdownd_client_t client, plist_t* record) {
 	int size = 0;
 	char* request = NULL;
@@ -50,61 +70,39 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record) {
 	struct curl_httppost* last = NULL;
 	activate_response* response = NULL;
 
-	char* imei = NULL;
-	char* imsi = NULL;
-	char* iccid = NULL;
-	char* serial_number = NULL;
-	char* activation_info = NULL;
-
-	plist_t imei_node = NULL;
-	plist_t imsi_node = NULL;
-	plist_t iccid_node = NULL;
-	plist_t serial_number_node = NULL;
 	plist_t activation_info_node = NULL;
 
+	char* activation_info;
+
+	activate_info* info;
+
 	char* device_class = NULL;
-	plist_t device_class_node = NULL;
-	lockdownd_get_value(client, NULL, "DeviceClass", &device_class_node);
-	if (!device_class_node || plist_get_node_type(device_class_node) != PLIST_STRING) {
-		fprintf(stderr, "Unable to get DeviceClass from lockdownd\n");
-		return -1;
-	}
-	plist_get_string_val(device_class_node, &device_class);
-	plist_free(device_class_node);
+	device_class=(char*)lockdownd_get_string_value(client, "DeviceClass");
 
 	if (!strcmp(device_class, "iPhone")) {
-		lockdownd_get_value(client, NULL, "IntegratedCircuitCardIdentity", &iccid_node);
-		if (!iccid_node || plist_get_node_type(iccid_node) != PLIST_STRING) {
-			fprintf(stderr, "Unable to get ICCID from lockdownd\n");
-			return -1;
-		}
-		plist_get_string_val(iccid_node, &iccid);
-		plist_free(iccid_node);
+		if (use_cache!=1)
+		{
+			info->iccid=(char*)lockdownd_get_string_value(client, "IntegratedCircuitCardIdentity");
 
-		lockdownd_get_value(client, NULL, "InternationalMobileEquipmentIdentity", &imei_node);
-		if (!imei_node || plist_get_node_type(imei_node) != PLIST_STRING) {
-			fprintf(stderr, "Unable to get IMEI from lockdownd\n");
-			return -1;
-		}
-		plist_get_string_val(imei_node, &imei);
-		plist_free(imei_node);
+			info->imei=(char*)lockdownd_get_string_value(client, "InternationalMobileEquipmentIdentity");
 
-		lockdownd_get_value(client, NULL, "InternationalMobileSubscriberIdentity", &imsi_node);
-		if (!imsi_node || plist_get_node_type(imsi_node) != PLIST_STRING) {
-			fprintf(stderr, "Unable to get IMSI from lockdownd\n");
-			return -1;
+			info->imsi=(char*)lockdownd_get_string_value(client, "InternationalMobileSubscriberIdentity");
 		}
-		plist_get_string_val(imsi_node, &imsi);
-		plist_free(imsi_node);
+
+		else {
+			info->iccid=get_from_cache("ICCID");
+			info->imei=get_from_cache("IMEI");
+			info->imsi=get_from_cache("IMSI");
+		}
 	}
 
-	lockdownd_get_value(client, NULL, "SerialNumber", &serial_number_node);
-	if (!serial_number_node || plist_get_node_type(serial_number_node) != PLIST_STRING) {
-		fprintf(stderr, "Unable to get SerialNumber from lockdownd\n");
-		return -1;
+	if (use_cache!=1)
+	{
+		info->serial_number=(char*)lockdownd_get_string_value(client, "SerialNumber");
 	}
-	plist_get_string_val(serial_number_node, &serial_number);
-	plist_free(serial_number_node);
+	else {
+		info->serial_number=get_from_cache("SerialNumber");
+	}
 
 	lockdownd_get_value(client, NULL, "ActivationInfo", &activation_info_node);
 	int type = plist_get_node_type(activation_info_node);
@@ -149,29 +147,46 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record) {
 
 	curl_formadd(&post, &last, CURLFORM_COPYNAME, "machineName", CURLFORM_COPYCONTENTS, "linux", CURLFORM_END);
 	curl_formadd(&post, &last, CURLFORM_COPYNAME, "InStoreActivation", CURLFORM_COPYCONTENTS, "false", CURLFORM_END);
-	if (imei != NULL) {
-		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMEI", CURLFORM_COPYCONTENTS, imei, CURLFORM_END);
-		free(imei);
+	if (info->imei != NULL) {
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMEI", CURLFORM_COPYCONTENTS, info->imei, CURLFORM_END);
+		cache("IMEI", (const char *)info->imei);
+		//free(info->imei);
+	}
+	else {
+		cache("IMEI", "");
 	}
 
-	if (imsi != NULL) {
-		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMSI", CURLFORM_COPYCONTENTS, imsi, CURLFORM_END);
-		free(imsi);
+	if (info->imsi != NULL) {
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMSI", CURLFORM_COPYCONTENTS, info->imsi, CURLFORM_END);
+		cache("IMSI", (const char *)info->imsi);
+		//free(imsi);
+	}
+	else {
+		cache("IMSI", "");
 	}
 
-	if (iccid != NULL) {
-		curl_formadd(&post, &last, CURLFORM_COPYNAME, "ICCID", CURLFORM_COPYCONTENTS, iccid, CURLFORM_END);
-		free(iccid);
+	if (info->iccid != NULL) {
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "ICCID", CURLFORM_COPYCONTENTS, info->iccid, CURLFORM_END);
+		cache("ICCID", (const char *)info->iccid);
+		//free(info->iccid);
+	}
+	else {
+		cache("ICCID", "");
 	}
 
-	if (serial_number != NULL) {
-		curl_formadd(&post, &last, CURLFORM_COPYNAME, "AppleSerialNumber", CURLFORM_COPYCONTENTS, serial_number, CURLFORM_END);
-		free(serial_number);
+	if (info->serial_number != NULL) {
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "AppleSerialNumber", CURLFORM_COPYCONTENTS, info->serial_number, CURLFORM_END);
+		cache("SerialNumber", (const char *)info->serial_number);
+		//free(info->serial_number);
+	}
+	else {
+		cache("SeralNumber", "");
 	}
 
 	if (activation_info != NULL) {
 		curl_formadd(&post, &last, CURLFORM_COPYNAME, "activation-info", CURLFORM_COPYCONTENTS, activation_info, CURLFORM_END);
-		free(activation_info);
+		cache("ActivationInfo", activation_info);
+		//free(activation_info);
 	}
 
 	struct curl_slist* header = NULL;

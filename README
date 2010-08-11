@@ -1,0 +1,20 @@
+ideviceactivate is a small utility to activate iDevices from the comfort of your GNU/Linux box.
+
+===Credits===
+
+Almost all of the code, with the major exception of the caching code, was written by p0sixninja.
+The caching code and the documentation was written by boxingsquirrel.
+
+===Building===
+
+Fetch your dependencies. Because these vary from distro to distro, I won't list specific packages here, that said you need developement packages for: libimobiledevice, libplist, usbmuxd, libgthread2, librt, gnutls, libtasn1, libxml2, libglib2, and libcurl.
+
+Then:
+	git clone git://github.com/boxingsquirrel/ideviceactivate.git
+	cd ideviceactivate
+	make
+	sudo make install
+
+===Running===
+
+For straight-up activation with nothing fancy: ideviceactivate

@@ -26,5 +26,6 @@
 #include <libimobiledevice/lockdown.h>
 
 int activate_fetch_record(lockdownd_client_t lockdown, plist_t* record);
+extern void deactivate_device(lockdownd_client_t client);
 
 #endif
