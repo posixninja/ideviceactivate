@@ -183,7 +183,7 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	activation_info = malloc(activation_info_size + 1);
 	memset(activation_info, '\0', activation_info_size + 1);
 	memcpy(activation_info, activation_info_start, activation_info_size);
-	free(activation_info_data);
+	//free(activation_info_data);
 
 	curl_global_init(CURL_GLOBAL_ALL);
 	CURL* handle = curl_easy_init();
@@ -207,7 +207,7 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	if (info->imsi != NULL) {
 		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMSI", CURLFORM_COPYCONTENTS, info->imsi, CURLFORM_END);
 		cache("IMSI", (const char *)info->imsi);
-		//free(imsi);
+		//free(info->imsi);
 	}
 	else {
 		cache("IMSI", "");
@@ -225,7 +225,7 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	if (info->serial_number != NULL) {
 		curl_formadd(&post, &last, CURLFORM_COPYNAME, "AppleSerialNumber", CURLFORM_COPYCONTENTS, info->serial_number, CURLFORM_END);
 		cache("SerialNumber", (const char *)info->serial_number);
-		//free(info->serial_number);
+		free(info->serial_number);
 	}
 	else {
 		cache("SeralNumber", "");
@@ -234,7 +234,7 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	if (activation_info != NULL) {
 		curl_formadd(&post, &last, CURLFORM_COPYNAME, "activation-info", CURLFORM_COPYCONTENTS, activation_info, CURLFORM_END);
 		cache("ActivationInfo", activation_info);
-		//free(activation_info);
+		free(activation_info);
 	}
 
 	struct curl_slist* header = NULL;
@@ -282,7 +282,7 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	char* ticket = malloc(ticket_size + 1);
 	memset(ticket, '\0', ticket_size + 1);
 	memcpy(ticket, ticket_start, ticket_size);
-	//free(ticket_data);
+	free(ticket_data);
 
 	//printf("%s\n\n", ticket);
 
