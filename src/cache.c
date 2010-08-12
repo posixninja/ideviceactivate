@@ -83,8 +83,9 @@ int cache(const char *fname, const char *what)
 
 		if (write_file((const char *)f_name, data)!=0)
 		{
+			return -1;
+		}
 
-		
 		return 0;
 	}
 
