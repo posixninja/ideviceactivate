@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cache.h"
+#include "util.h"
 
 int write_file(const char *filename, char data[BUFSIZE])
 {

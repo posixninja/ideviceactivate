@@ -2,7 +2,7 @@
  * util.c
  * Just utility functions ;)
  *
- * Copyright (c) 2010 Joshua Hill. All Rights Reserved.
+ * Copyright (c) 2010 Joshua Hill and boxingsquirrel. All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <plist/plist.h>
 #include <libimobiledevice/lockdown.h>
 
@@ -99,4 +100,20 @@ char *lockdownd_get_string_value(lockdownd_client_t client, const char *what)
 	plist_free(val_node);
 
 	return (char *)val;
+}
+
+/* This is really just a function to allow some hooking into Gtk stuff in iDeviceActivator... */
+void info(const char *m)
+{
+	printf("INFO: %s\n", m);
+}
+
+void error(const char *m)
+{
+	fprintf(stderr, "%s\n", m);
+}
+
+void task(const char *m)
+{
+	printf("%s\n", m);	
 }

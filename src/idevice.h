@@ -1,6 +1,6 @@
 /*
- * cache.h
- * Load data from/add data to the activation info cache.
+ * idevice.h
+ * Handles stuff like freeing up & starting connections
  *
  * Copyright (c) 2010 boxingsquirrel. All Rights Reserved.
  *
@@ -18,19 +18,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <plist/plist.h>
+#ifndef IDEVICE_H
+	#define IDEVICE_H
 
-#define BUFSIZE 0x200000
-
-extern char* cachedir;
-extern int use_cache;
-extern int backup_to_cache;
-
-extern int write_file(const char *filename, char data[BUFSIZE]);
-extern int cache(const char *fname, const char *what);
-extern int cache_plist(const char *fname, plist_t plist);
-extern char* get_from_cache(const char *what);
-
-extern void cache_warning();
-
-extern int check_cache(lockdownd_client_t c);
+	extern void init_lockdownd(char* uuid);
+	extern void free_up();
+#endif

@@ -2,7 +2,7 @@
  * ideviceactivate.c
  * A simple utility to handle the activation process for iPhones.
  *
- * Copyright (c) 2010 Joshua Hill. All Rights Reserved.
+ * Copyright (c) 2010 Joshua Hill and boxingsquirrel. All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -30,10 +30,14 @@
 #include "activate.h"
 #include "cache.h"
 #include "util.h"
+#include "idevice.h"
 
 char* cachedir = NULL;
 int use_cache=0;
 int backup_to_cache=0;
+
+idevice_t device = NULL;
+lockdownd_client_t client = NULL;
 
 static void usage(int argc, char** argv) {
 	char* name = strrchr(argv[0], '/');
@@ -58,7 +62,6 @@ static void usage(int argc, char** argv) {
 }
 
 int main(int argc, char* argv[]) {
-	int i = 0;
 	int opt = 0;
 	int debug = 0;
 	char* uuid = NULL;
@@ -70,10 +73,6 @@ int main(int argc, char* argv[]) {
 	char* cust_serial_num=NULL;
 
 	int deactivate = 0;
-	idevice_t device = NULL;
-	lockdownd_client_t client = NULL;
-	idevice_error_t device_error = IDEVICE_E_UNKNOWN_ERROR;
-	lockdownd_error_t client_error = LOCKDOWN_E_UNKNOWN_ERROR;
 
 	while ((opt = getopt(argc, argv, "dhxu:f:c:r:e:s:i:n:")) > 0) {
 		switch (opt) {
@@ -133,25 +132,14 @@ int main(int argc, char* argv[]) {
 	argc -= optind;
 	argv += optind;
 
-	device_error = idevice_new(&device, uuid);
-	if (device_error != IDEVICE_E_SUCCESS) {
-		printf("No device found, is it plugged in?\n");
-		return -1;
-	}
-
-	client_error = lockdownd_client_new_with_handshake(device, &client, "ideviceactivate");
-	if (client_error != LOCKDOWN_E_SUCCESS) {
-		printf("Unable to connect to lockdownd\n");
-		idevice_free(device);
-		return -1;
-	}
+	init_lockdownd(uuid);
 
 	if (use_cache==1)
 	{
 		if (check_cache(client)!=0)
 		{
-			printf("The selected cache does not match this device :(");
-			idevice_free(device);
+			error("The selected cache does not match this device :(");
+			free_up();
 			return -1;
 		}
 	}
@@ -163,41 +151,56 @@ int main(int argc, char* argv[]) {
 		if (file != NULL) {
 			printf("Reading activation record from %s\n", file);
 			if (plist_read_from_filename(&activation_record, file) < 0) {
-				printf("Unable to find activation record\n");
-				lockdownd_client_free(client);
-				idevice_free(device);
+				error("Unable to find activation record");
+				free_up();
 				return -1;
 			}
 
 		} else {
 			printf("Creating activation request\n");
 			if(activate_fetch_record(client, &activation_record, cust_imei, cust_imsi, cust_iccid, cust_serial_num) < 0) {
-				fprintf(stderr, "Unable to fetch activation request\n");
-				lockdownd_client_free(client);
-				idevice_free(device);
+				error("Unable to fetch activation request");
+				free_up();
 				return -1;
 			}
 		}
 
-		printf("Activating device...\n");
-		uint32_t len=0;
-		char **xml=NULL;
-
-		plist_to_xml(activation_record, &xml, &len);
-		printf("ACTIVATION RECORD:\n\n%s\n\n", xml);
-		client_error = lockdownd_activate(client, activation_record);
-		if (client_error == LOCKDOWN_E_SUCCESS) {
-			printf("SUCCESS\n");
-		} else {
-			fprintf(stderr, "ERROR\nUnable to activate device: %d\n", client_error);
+		if (do_activation(client, activation_record)!=0)
+		{
+			free_up();
+			return -1;
 		}
-
-		//plist_free(activation_record);
-		activation_record = NULL;
 	}
 
-	lockdownd_client_free(client);
-	idevice_free(device);
+	free_up();
 	return 0;
 }
 
+void init_lockdownd(char* uuid)
+{
+	idevice_error_t device_error = idevice_new(&device, uuid);
+	if (device_error != IDEVICE_E_SUCCESS) {
+		error("No device found, is it plugged in?");
+		exit(-1);
+	}
+
+	lockdownd_error_t client_error = lockdownd_client_new_with_handshake(device, &client, "ideviceactivate");
+	if (client_error != LOCKDOWN_E_SUCCESS) {
+		error("Unable to connect to lockdownd");
+		free_up();
+		exit(-1);
+	}
+}
+
+void free_up()
+{
+	if (device!=NULL)
+	{
+		idevice_free(device);
+	}
+
+	if (client!=NULL)
+	{
+		lockdownd_client_free(client);
+	}
+}

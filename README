@@ -33,3 +33,5 @@ Now, to run with the caching stuff:
 Notes:
 	The -u flag can be used to target a device by its UUID.
 	If you have an activation record lying around, you can specify it along with the -f flag.
+
+	The IMEI, IMSI, ICCID, and SerialNumber can be specified on the command line with the -e, -s, -i, and -n flags respectively.
