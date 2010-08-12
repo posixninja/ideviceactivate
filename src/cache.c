@@ -81,8 +81,11 @@ int cache(const char *fname, const char *what)
 		char f_name[512];
 		snprintf(f_name, BUFSIZE, "%s/%s", cachedir, fname);
 
-		write_file((const char *)f_name, data);
-		return 1;
+		if (write_file((const char *)f_name, data)!=0)
+		{
+
+		
+		return 0;
 	}
 
 	else {
@@ -99,8 +102,7 @@ int cache_plist(const char *fname, plist_t plist)
 
 		plist_to_xml(plist, &xml, &len);
 
-		cache(fname, (const char *)xml);
-		return 1;
+		return cache(fname, (const char *)xml);
 	}
 
 	else {
