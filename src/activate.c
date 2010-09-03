@@ -69,6 +69,10 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	struct curl_httppost* last = NULL;
 	activate_response* response = NULL;
 
+	plist_t imei_node = NULL;
+	plist_t imsi_node = NULL;
+	plist_t iccid_node = NULL;
+	plist_t serial_number_node = NULL;
 	plist_t activation_info_node = NULL;
 
 	char* activation_info;
@@ -76,14 +80,27 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	activate_info* ainfo;
 
 	char* device_class = NULL;
-	device_class=(char*)lockdownd_get_string_value(client, "DeviceClass");
+	plist_t device_class_node = NULL;
+	lockdownd_get_value(client, NULL, "DeviceClass", &device_class_node);
+	if (!device_class_node || plist_get_node_type(device_class_node) != PLIST_STRING) {
+		fprintf(stderr, "Unable to get DeviceClass from lockdownd\n");
+		return -1;
+	}
+	plist_get_string_val(device_class_node, &device_class);
+	plist_free(device_class_node);
 
 	if (!strcmp(device_class, "iPhone")) {
 		if (use_cache!=1)
 		{
 			if (cust_iccid==NULL)
 			{
-				ainfo->iccid=(char*)lockdownd_get_string_value(client, "IntegratedCircuitCardIdentity");
+				lockdownd_get_value(client, NULL, "IntegratedCircuitCardIdentity", &iccid_node);
+				if (!iccid_node || plist_get_node_type(iccid_node) != PLIST_STRING) {
+					fprintf(stderr, "Unable to get ICCID from lockdownd\n");
+					return -1;
+				}
+				plist_get_string_val(iccid_node, &ainfo->iccid);
+				plist_free(iccid_node);
 			}
 			else {
 				info("ICCID specified on the command line...");
@@ -92,7 +109,13 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 
 			if (cust_imei==NULL)
 			{
-				ainfo->imei=(char*)lockdownd_get_string_value(client, "InternationalMobileEquipmentIdentity");
+				lockdownd_get_value(client, NULL, "InternationalMobileEquipmentIdentity", &imei_node);
+				if (!imei_node || plist_get_node_type(imei_node) != PLIST_STRING) {
+					fprintf(stderr, "Unable to get IMEI from lockdownd\n");
+					return -1;
+				}
+				plist_get_string_val(imei_node, &ainfo->imei);
+				plist_free(imei_node);
 			}
 			else {
 				info("IMEI specified on the command line...");
@@ -101,7 +124,13 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 
 			if (cust_imsi==NULL)
 			{
-				ainfo->imsi=(char*)lockdownd_get_string_value(client, "InternationalMobileSubscriberIdentity");
+				lockdownd_get_value(client, NULL, "InternationalMobileSubscriberIdentity", &imsi_node);
+				if (!imsi_node || plist_get_node_type(imsi_node) != PLIST_STRING) {
+					fprintf(stderr, "Unable to get IMSI from lockdownd\n");
+					return -1;
+				}
+				plist_get_string_val(imsi_node, &ainfo->imsi);
+				plist_free(imsi_node);
 			}
 			else {
 				info("IMSI specified on the command line...");
@@ -140,7 +169,13 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	{
 		if (use_cache!=1)
 		{
-			ainfo->serial_number=(char*)lockdownd_get_string_value(client, "SerialNumber");
+			lockdownd_get_value(client, NULL, "SerialNumber", &serial_number_node);
+			if (!serial_number_node || plist_get_node_type(serial_number_node) != PLIST_STRING) {
+				fprintf(stderr, "Unable to get SerialNumber from lockdownd\n");
+				return -1;
+			}
+			plist_get_string_val(serial_number_node, &ainfo->serial_number);
+			plist_free(serial_number_node);
 		}
 		else {
 			ainfo->serial_number=get_from_cache("SerialNumber");

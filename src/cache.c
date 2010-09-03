@@ -134,7 +134,9 @@ void cache_warning()
 int check_cache(lockdownd_client_t c)
 {
 	char* uuid_from_cache=get_from_cache("UUID");
-	char* uuid_from_device=(char *)lockdownd_get_string_value(c, "UniqueDeviceID");
+	char* uuid_from_device=NULL;
+
+	lockdownd_get_string_value(c, "UniqueDeviceID", &uuid_from_device);
 
 	return strcmp(uuid_from_cache, uuid_from_device);
 }

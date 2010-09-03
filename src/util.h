@@ -24,7 +24,7 @@
 // These just wrap p0sixninja's original code, just trying to clean up...
 extern int plist_read_from_filename(plist_t *plist, const char *filename);
 extern int buffer_read_from_filename(const char *filename, char **buffer, uint32_t *length);
-extern char *lockdownd_get_string_value(lockdownd_client_t client, const char *what);
+extern void lockdownd_get_string_value(lockdownd_client_t client, const char *what, char *val);
 
 // The main purpose of these two is to provide a way to mod the behavior, plus a bit of shorthand ;)
 extern void info(const char *m);

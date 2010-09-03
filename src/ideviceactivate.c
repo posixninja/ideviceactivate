@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
 		switch (opt) {
 		case 'h':
 			usage(argc, argv);
-			break;
+			return 0;
 
 		case 'd':
 			debug = 1;
