@@ -75,9 +75,11 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	plist_t serial_number_node = NULL;
 	plist_t activation_info_node = NULL;
 
-	char* activation_info;
-
-	activate_info* ainfo;
+	char* imei=NULL;
+	char* imsi=NULL;
+	char* iccid=NULL;
+	char* serial_number=NULL;
+	char* activation_info=NULL;
 
 	char* device_class = NULL;
 	plist_t device_class_node = NULL;
@@ -89,6 +91,17 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	plist_get_string_val(device_class_node, &device_class);
 	plist_free(device_class_node);
 
+		plist_t uuid_node=NULL;
+		char* uuid=NULL;
+		lockdownd_get_value(client, NULL, "UniqueDeviceID", &uuid_node);
+		if (!uuid_node || plist_get_node_type(uuid_node) != PLIST_STRING) {
+			fprintf(stderr, "Unable to get UUID from lockdownd\n");
+			return -1;
+		}
+		plist_get_string_val(uuid_node, &uuid);
+		plist_free(uuid_node);
+		cache("UUID", (const char *)uuid);
+
 	if (!strcmp(device_class, "iPhone")) {
 		if (use_cache!=1)
 		{
@@ -99,12 +112,12 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 					fprintf(stderr, "Unable to get ICCID from lockdownd\n");
 					return -1;
 				}
-				plist_get_string_val(iccid_node, &ainfo->iccid);
+				plist_get_string_val(iccid_node, &iccid);
 				plist_free(iccid_node);
 			}
 			else {
 				info("ICCID specified on the command line...");
-				ainfo->iccid=cust_iccid;
+				iccid=cust_iccid;
 			}
 
 			if (cust_imei==NULL)
@@ -114,12 +127,12 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 					fprintf(stderr, "Unable to get IMEI from lockdownd\n");
 					return -1;
 				}
-				plist_get_string_val(imei_node, &ainfo->imei);
+				plist_get_string_val(imei_node, &imei);
 				plist_free(imei_node);
 			}
 			else {
 				info("IMEI specified on the command line...");
-				ainfo->imei=cust_imei;
+				imei=cust_imei;
 			}
 
 			if (cust_imsi==NULL)
@@ -129,38 +142,38 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 					fprintf(stderr, "Unable to get IMSI from lockdownd\n");
 					return -1;
 				}
-				plist_get_string_val(imsi_node, &ainfo->imsi);
+				plist_get_string_val(imsi_node, &imsi);
 				plist_free(imsi_node);
 			}
 			else {
 				info("IMSI specified on the command line...");
-				ainfo->imsi=cust_imsi;
+				imsi=cust_imsi;
 			}
 		}
 
 		else {
 			if (cust_iccid==NULL)
 			{
-				ainfo->iccid=get_from_cache("ICCID");
+				iccid=get_from_cache("ICCID");
 			}
 			else {
-				ainfo->iccid=cust_iccid;
+				iccid=cust_iccid;
 			}
 
 			if (cust_imei==NULL)
 			{
-				ainfo->imei=get_from_cache("IMEI");
+				imei=get_from_cache("IMEI");
 			}
 			else {
-				ainfo->imei=cust_imei;
+				imei=cust_imei;
 			}
 
 			if (cust_imsi==NULL)
 			{
-				ainfo->imsi=get_from_cache("IMSI");
+				imsi=get_from_cache("IMSI");
 			}
 			else {
-				ainfo->imsi=cust_imsi;
+				imsi=cust_imsi;
 			}
 		}
 	}
@@ -169,21 +182,22 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	{
 		if (use_cache!=1)
 		{
-			lockdownd_get_value(client, NULL, "SerialNumber", &serial_number_node);
-			if (!serial_number_node || plist_get_node_type(serial_number_node) != PLIST_STRING) {
-				fprintf(stderr, "Unable to get SerialNumber from lockdownd\n");
+			plist_t serial_num_node = NULL;
+			lockdownd_get_value(client, NULL, "SerialNumber", &serial_num_node);
+			if (!serial_num_node || plist_get_node_type(serial_num_node) != PLIST_STRING) {
+				fprintf(stderr, "Unable to get DeviceClass from lockdownd\n");
 				return -1;
 			}
-			plist_get_string_val(serial_number_node, &ainfo->serial_number);
-			plist_free(serial_number_node);
+			plist_get_string_val(serial_num_node, &serial_number);
+			plist_free(serial_num_node);
 		}
 		else {
-			ainfo->serial_number=get_from_cache("SerialNumber");
+			serial_number=get_from_cache("SerialNumber");
 		}
 	}
 	else {
 		info("Serial number specified on the command line...");
-		ainfo->serial_number=cust_serial_num;
+		serial_number=cust_serial_num;
 	}
 
 	lockdownd_get_value(client, NULL, "ActivationInfo", &activation_info_node);
@@ -198,7 +212,7 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 	char* activation_info_data = NULL;
 	plist_to_xml(activation_info_node, &activation_info_data, &activation_info_size);
 	plist_free(activation_info_node);
-	//printf("%s\n\n", activation_info_data);
+	printf("%s\n\n", activation_info_data);
 
 	char* activation_info_start = strstr(activation_info_data, "<dict>");
 	if (activation_info_start == NULL) {
@@ -229,37 +243,38 @@ int activate_fetch_record(lockdownd_client_t client, plist_t* record, char* cust
 
 	curl_formadd(&post, &last, CURLFORM_COPYNAME, "machineName", CURLFORM_COPYCONTENTS, "linux", CURLFORM_END);
 	curl_formadd(&post, &last, CURLFORM_COPYNAME, "InStoreActivation", CURLFORM_COPYCONTENTS, "false", CURLFORM_END);
-	if (ainfo->imei != NULL) {
-		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMEI", CURLFORM_COPYCONTENTS, ainfo->imei, CURLFORM_END);
-		cache("IMEI", (const char *)ainfo->imei);
-		//free(ainfo->imei);
+
+	if (imei != NULL) {
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMEI", CURLFORM_COPYCONTENTS, imei, CURLFORM_END);
+		cache("IMEI", (const char *)imei);
+		free(imei);
 	}
 	else {
 		cache("IMEI", "");
 	}
 
-	if (ainfo->imsi != NULL) {
-		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMSI", CURLFORM_COPYCONTENTS, ainfo->imsi, CURLFORM_END);
-		cache("IMSI", (const char *)ainfo->imsi);
-		//free(ainfo->imsi);
+	if (imsi != NULL) {
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "IMSI", CURLFORM_COPYCONTENTS, imsi, CURLFORM_END);
+		cache("IMSI", (const char *)imsi);
+		free(imsi);
 	}
 	else {
 		cache("IMSI", "");
 	}
 
-	if (ainfo->iccid != NULL) {
-		curl_formadd(&post, &last, CURLFORM_COPYNAME, "ICCID", CURLFORM_COPYCONTENTS, ainfo->iccid, CURLFORM_END);
-		cache("ICCID", (const char *)ainfo->iccid);
-		//free(ainfo->iccid);
+	if (iccid != NULL) {
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "ICCID", CURLFORM_COPYCONTENTS, iccid, CURLFORM_END);
+		cache("ICCID", (const char *)iccid);
+		free(iccid);
 	}
 	else {
 		cache("ICCID", "");
 	}
 
-	if (ainfo->serial_number != NULL) {
-		curl_formadd(&post, &last, CURLFORM_COPYNAME, "AppleSerialNumber", CURLFORM_COPYCONTENTS, ainfo->serial_number, CURLFORM_END);
-		cache("SerialNumber", (const char *)ainfo->serial_number);
-		free(ainfo->serial_number);
+	if (serial_number != NULL) {
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "AppleSerialNumber", CURLFORM_COPYCONTENTS, serial_number, CURLFORM_END);
+		cache("SerialNumber", (const char *)serial_number);
+		free(serial_number);
 	}
 	else {
 		cache("SeralNumber", "");
@@ -355,7 +370,7 @@ int do_activation(lockdownd_client_t client, plist_t activation_record)
 
 	// Just my little dump'n'run exercise with the activation record...
 	uint32_t len=0;
-	char **xml=NULL;
+	char *xml=NULL;
 
 	plist_to_xml(activation_record, &xml, &len);
 	printf("ACTIVATION RECORD:\n\n%s\n\n", xml);
