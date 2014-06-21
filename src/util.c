@@ -86,20 +86,17 @@ int plist_read_from_filename(plist_t *plist, const char *filename) {
 }
 
 /* This one is a wrapper for p0sixninja's rather repetetive code... */
-char *lockdownd_get_string_value(lockdownd_client_t client, const char *what)
+void lockdownd_get_string_value(lockdownd_client_t client, const char *what, char *val)
 {
 	plist_t val_node=NULL;
-	char* val=NULL;
 
 	lockdownd_get_value(client, NULL, what, &val_node);
 	if (!val_node || plist_get_node_type(val_node) != PLIST_STRING) {
 		fprintf(stderr, "Unable to get %s from lockdownd\n", what);
-		return NULL;
+		val=NULL;
 	}
 	plist_get_string_val(val_node, &val);
 	plist_free(val_node);
-
-	return (char *)val;
 }
 
 /* This is really just a function to allow some hooking into Gtk stuff in iDeviceActivator... */
